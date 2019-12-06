@@ -3,12 +3,15 @@ enum Expr {
     Lam (String, Box<Expr>),
     App (Box<Expr>, Box<Expr>),
 }
+use Expr::{Var, Lam, App};
 
-fn reduce(expr: Expr) -> Expr {
+fn reduce(expr: Expr) -> Box<Expr> {
     match expr {
-        Expr::Var(x) => Expr::Var(x),
-        Expr::Lam(x, e) => Expr::Lam(x, e),
-        Expr::App(e0, e1) => Expr::App(e0, e1),
+        Var(x) => Box::new(Var(x)),
+        Lam(x, e) => Box::new(Lam(x, e)),
+        App(e0, e1) => match e0 {
+            Var(x) => Box::new(App(Box::new(Var(x)), reduce(e1)))
+        }
     }
 }
 
