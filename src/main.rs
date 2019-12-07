@@ -12,43 +12,39 @@ impl Expr {
     fn reduce(&self) -> Expr {
         match self {
             Var(_) => self.clone(),
-            Lam(x, e) => Lam(x.to_string(), Box::new(e.reduce())),
-            App(e0, e1) => {
-                let e0 = e0.reduce();
-                let e1 = e1.reduce();
-                match e0 {
-                    Var(_) => App(Box::new(e0), Box::new(e1)),
-                    Lam(_, _) => App(Box::new(e0), Box::new(e1)),
-                    App(_, _) => App(Box::new(e0), Box::new(e1)),
+            Lam(_, _) => self.clone(),
+            App(e0, e1) =>
+                match e0.id() {
+                    Var(_) => app(e0.id(), e1.reduce()),
+                    Lam(x, e) => e1.subst(&x, e.id()),
+                    App(e2, e3) => app(app(e2.reduce(), e3.reduce()).reduce(), e1.id())
                 }
-            }
         }
     }
 
-    fn subst(&self, x:String, y:Expr) -> Expr {
-        match self {
-            Var(n) => if x == n.to_string() { self.clone() } else { y },
+    fn subst(&self, x:&String, y:Expr) -> Expr {
+        match y.clone() {
+            Var(n) => if x.to_string() == n.to_string() { self.clone() } else { y },
             Lam(n, z) => {
-                if x == n.to_string() {
-                    y.clone()
+                if x.to_string() == n.to_string() {
+                    lam(&n, z.id())
                 } else {
-                    if self.free().contains(&x) {
-                        Lam(n.to_string(), Box::new(self.subst(x, z.id())))
+                    if self.free().contains(x) {
+                        lam(&n, self.subst(x, z.id()))
                     } else {
-                        // TODO: implement fres hvariable
-                        Lam(n.to_string(), Box::new(self.subst(x, z.id())))
+                        lam(&n, self.subst(x, z.id()))
                     }
                 }
             },
-            App(e0, e1) => App(Box::new(e0.subst(x.to_string(), y.clone())), Box::new(e1.subst(x.to_string(), y.clone()))),
+            App(e0, e1) => app(self.subst(x, e0.id()), self.subst(x, e1.id()))
         }
     }
 
     fn id(&self) -> Expr {
         match self {
-            Var(x) => Var(x.to_string()),
-            Lam(n, e) => Lam(n.to_string(), Box::new(e.id())),
-            App(e0, e1) => App(Box::new(e0.id()), Box::new(e1.id())),
+            Var(x) => var(x),
+            Lam(n, e) => lam(n, e.id()),
+            App(e0, e1) => app(e0.id(), e1.id(),),
         }
     }
 
@@ -88,6 +84,6 @@ fn app (e0: Expr, e1: Expr) -> Expr {
 }
 
 fn main() {
-    let expr = app(lam("x", var("x")), var("y"));
+    let expr = app(app(lam("x", var("x")), var("y")), var("z"));
     println!("{:?}", expr.reduce());
 }
