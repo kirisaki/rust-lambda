@@ -32,10 +32,23 @@ impl Expr {
                 if x == n.to_string() {
                     y.clone()
                 } else {
-                    y
+                    if self.free().contains(&x) {
+                        Lam(n.to_string(), Box::new(self.subst(x, z.id())))
+                    } else {
+                        // TODO: implement fres hvariable
+                        Lam(n.to_string(), Box::new(self.subst(x, z.id())))
+                    }
                 }
             },
             App(e0, e1) => App(Box::new(e0.subst(x.to_string(), y.clone())), Box::new(e1.subst(x.to_string(), y.clone()))),
+        }
+    }
+
+    fn id(&self) -> Expr {
+        match self {
+            Var(x) => Var(x.to_string()),
+            Lam(n, e) => Lam(n.to_string(), Box::new(e.id())),
+            App(e0, e1) => App(Box::new(e0.id()), Box::new(e1.id())),
         }
     }
 
@@ -62,8 +75,19 @@ impl Expr {
 
 }
 
+fn var(s: &str) -> Expr {
+    Var(s.to_string())
+}
 
+fn lam(s: &str, e: Expr) -> Expr {
+    Lam(s.to_string(), Box::new(e))
+}
+
+fn app (e0: Expr, e1: Expr) -> Expr {
+    App(Box::new(e0), Box::new(e1))
+}
 
 fn main() {
-    println!("Hello, world!");
+    let expr = app(lam("x", var("x")), var("y"));
+    println!("{:?}", expr.reduce());
 }
